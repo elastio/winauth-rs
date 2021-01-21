@@ -1,7 +1,7 @@
 //! A minimal hyper server example
+use hyper::rt;
+use hyper::service::{make_service_fn, service_fn};
 use hyper::{Body, Request, Response, Server};
-use hyper::service::{make_service_fn, service_fn_ok};
-use hyper::rt::{self, Future};
 use winauth::http::Authenticator;
 
 use cfg_if::cfg_if;
@@ -15,7 +15,7 @@ fn main() {
         .http1_only(true) // winauth only works for HTTP1
         .serve(make_service_fn(move |_socket: &hyper::server::conn::AddrStream| {
             let mut auth = AuthContext::None;
-            service_fn_ok(move |req: Request<Body>| {
+            service_fn(move |req: Request<Body>| {
                 // Perform authentication (at most once per connection) for Windows
                 if let AuthContext::None = auth {
                     let sspi = winauth::windows::NtlmSspiBuilder::new()
@@ -49,9 +49,11 @@ fn main() {
 
                 // Authentication was successful. Store the username in a dummy session store (as we would in a database)
                 let username = auth.username();
-                Response::builder()
+                Ok(
+                    Response::builder()
                     .body(Body::from(format!("Hello {}", username)))
                     .unwrap()
+                )
             })
         }))
         .map_err(|e| eprintln!("server error: {}", e));
@@ -80,7 +82,7 @@ impl AuthContext {
         }
     }
 }
-        
+
     } // WINDOWS
     else {
         fn main() {

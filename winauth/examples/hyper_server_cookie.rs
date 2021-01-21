@@ -5,9 +5,9 @@
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
+use hyper::rt;
+use hyper::service::{make_service_fn, service_fn};
 use hyper::{Body, Request, Response, Server};
-use hyper::service::{make_service_fn, service_fn_ok};
-use hyper::rt::{self, Future};
 use winauth::http::Authenticator;
 
 use cfg_if::cfg_if;
@@ -25,9 +25,9 @@ fn main() {
     let server = Server::bind(&addr)
         .http1_only(true) // winauth only works for HTTP1
         .serve(make_service_fn(move |_socket: &hyper::server::conn::AddrStream| {
-            let dummy_session_store = dummy_session_store.clone(); 
+            let dummy_session_store = dummy_session_store.clone();
             let mut auth = AuthContext::None;
-            service_fn_ok(move |req: Request<Body>| { 
+            service_fn(move |req: Request<Body>| {
                 // Handle requests that work with sessions or might not need auth first
                 if !req.uri().path().starts_with("/auth/windows") {
                     // FIXME The cookie handling here is very minimal for demo purposes. This wont work in production!
@@ -41,7 +41,7 @@ fn main() {
                     };
 
                     let mut builder = hyper::Response::builder();
-                    return builder.body(content.into()).unwrap();
+                    return Ok(builder.body(content.into()).unwrap());
                 }
 
                 // Perform authentication (at most once per connection) for Windows
@@ -67,7 +67,7 @@ fn main() {
                                 builder.header(*k, v);
                             }
                             builder.status(resp.status_code);
-                            return builder.body("".into()).unwrap();
+                            return Ok(builder.body("".into()).unwrap());
                         },
                         // We finally have performed enough requests and authenticated successfully
                         // Get the username into the client name
@@ -80,10 +80,10 @@ fn main() {
                 let cookie_name = generate_INSECURE_random_string();
                 println!("Got auth request from user {}. Setting cookie {}", username, cookie_name);
                 dummy_session_store.lock().unwrap().insert(cookie_name.clone(), username.to_owned());
-                Response::builder()
-                    .header("Set-Cookie", format!("session={};path=/", cookie_name)) // FIXME Use the cookie crate for this in production!
-                    .body(Body::from(format!("Hello {}", username)))
-                    .unwrap()
+                Ok(Response::builder()
+                 .header("Set-Cookie", format!("session={};path=/", cookie_name)) // FIXME Use the cookie crate for this in production!
+                 .body(Body::from(format!("Hello {}", username)))
+                 .unwrap())
             })
         }))
         .map_err(|e| eprintln!("server error: {}", e));
@@ -120,7 +120,7 @@ fn generate_INSECURE_random_string() -> String {
     "abcdefghHIGHTLYsecureCOOKIE".to_owned()
 }
 
-        
+
     } // WINDOWS
     else {
         fn main() {

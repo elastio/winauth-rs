@@ -12,15 +12,15 @@ edition = "2018"
 [dependencies]
 bitflags = "1.1"
 byteorder = "1.2.0"
-rand = "0.7"
+rand = "0.8"
 md5 = "0.6.1"
-base64 = { version = "0.10" }
+base64 = { version = "0.13" }
 
 [target.'cfg(windows)'.dependencies]
 winapi = { version = "0.3", features = ["winerror", "sspi"] }
 
 [dev-dependencies]
-hyper = "0.12"
-hyper-tls = "0.3"
-reqwest= "0.9"
+hyper = { version = "0.14", features = ["runtime", "server"] }
+hyper-tls = "0.5"
+reqwest= "0.11"
 cfg-if = "0.1"
